@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "../include/filtros.h"
+#include "../include/transformacoes.h"
 
 ssize_t readch(int fd, char* buf) {
     static char file_buffer[BUF_SIZE];
@@ -78,7 +78,7 @@ Request* remove_request(
     return request;
 }
 
-bool valid_request_to_execute(Request* request, CatalogoFiltros* catalogo) {
+bool valid_request_to_execute(Request* request, CatalogoTransformacoes* catalogo) {
     bool valid = true;
     if (request->request_type != TRANSFORM) return true;
 
@@ -103,7 +103,7 @@ bool valid_request_to_execute(Request* request, CatalogoFiltros* catalogo) {
 
 
 Request* can_execute_request(
-        Queue* queue, CatalogoFiltros* catalogo, Queue** last_queue) {
+        Queue* queue, CatalogoTransformacoes* catalogo, Queue** last_queue) {
     Request* request   = NULL;
     Queue*   endereco  = queue;
     Queue*   endereco2 = queue;
