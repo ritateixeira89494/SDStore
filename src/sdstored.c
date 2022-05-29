@@ -38,6 +38,8 @@ typedef struct transform {
 
 
 
+
+
 int readln(int fd, char *line, size_t size) {
 	int bytes_read;
 	int i = 0;
@@ -50,6 +52,23 @@ int readln(int fd, char *line, size_t size) {
 	}
 	return i;
 }
+
+
+
+
+int read_file(char* filename) {
+  int  fd = open(filename, O_RDONLY);
+  char line[BUFSIZE];
+  int  total_read = 0, len = 0;
+  while ((len = readln(fd, line, BUFSIZE)) > 0) {
+    total_read += len;
+    //write(1, line, len);
+  }
+  return total_read;
+}
+
+
+
 
 
 
@@ -110,6 +129,7 @@ void free_transforms(Transform *t) {
 Request proc_request(char* line) {
         Request r = malloc(sizeof(struct request));
 
+        
         char *aux, *aux1, *aux2, *aux3, *aux4, *token;
         
         token = strtok(line, " ");
@@ -182,8 +202,8 @@ void print_req(Request r) {
         strcat(w, r->output_file);
         strcat(w, " ");
 
-        
-        for(int i=0; r->trnsfs[i]; i++) {
+        int i;
+        for(i=0; r->trnsfs[i]; i++) {
             strcat(w, r->trnsfs[i]);
             strcat(w, " ");
         }
@@ -192,14 +212,6 @@ void print_req(Request r) {
         write(1, w, strlen(w));
         return ;
     }
-}
-
-void print_req2(Request r) {
-    char w[128] = "";
-    for(int i=0; r->trnsfs[i]; i++) {
-            strcat(w, r->trnsfs[i]);
-            strcat(w, " ");
-        }
 }
 
 
@@ -222,7 +234,54 @@ void adicionarPedidoQueue(Queue** pedidos, Request* request){
 
 
 
-void exec_req_simple (char* trnsf_dir, char* tipo, char* in_pathfile, char* out_pathfile) {
+void exec_req_noreq (char* trnsf_dir, char* trnsfs[], int trnsf_no, char* in_pathfile, char* out_pathfile) {
+
+    int in_fd = open(in_pathfile, O_RDONLY);
+    int fd[2];
+    int p = pipe(fd);
+     if(p == -1){
+        perror("pipe");
+    }
+
+       
+
+    for(int i=0; i<trnsf_no; i++) {
+        if(i < trnsf_no-1) pipe(fd);
+        if(!fork()) {
+            dup2(in_fd, 0);
+            close(in_fd);
+
+            if(i < trnsf_no - 1) {
+                dup2(fd[1], 1);
+                close(fd[0]);
+                close(fd[1]);
+            }
+            else {
+                int out_fd = open(out_pathfile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+
+                dup2(out_fd, 1);
+                close(out_fd);
+            }
+
+            char* cmd = strdup(trnsf_dir); 
+            strcat(cmd, trnsfs[i]);
+
+            execlp(cmd, cmd, NULL);
+            perror("execlp");
+            _exit(1);
+        }
+        if (i < trnsf_no-1) close(fd[1]);
+        close(in_fd);
+        if (i < trnsf_no-1) in_fd = fd[0];
+
+    }
+
+    for (int i = 0; i < trnsf_no; i++) {
+        wait(NULL);
+    }
+}
+
+void exec_req_noreq_simple (char* trnsf_dir, char* tipo, char* in_pathfile, char* out_pathfile) {
 
     int in_fd = open(in_pathfile, O_RDONLY);
     int out_fd = open(out_pathfile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -255,7 +314,6 @@ void exec_req_simple (char* trnsf_dir, char* tipo, char* in_pathfile, char* out_
         wait(NULL);
     }
 }
-
 
 void exec_req (char* trnsf_dir, Request r) {
 
@@ -332,20 +390,30 @@ int main(int argc, char* argv[]) {
 
             req = proc_request(to_proc);
 
-            print_req(req);
+            // print_req(req);
 
             // exec_req(transform_path, req);
 
             // exec_req2(transform_path, "bcompress", "samples/sample-1-so.m4a", "outputs/sample-1-so-bcomp.m4a");
             // exec_req2(transform_path, "bdecompress", "outputs/sample-1-so-bcomp.m4a", "outputs/sample-1-so-bdecomp.m4a");
 
-            char pipe[16];
+
+            char pid_pipe[16];
             sprintf(pipe, "tmp/pipe_%d", req->client_pid);
+
+            /*
+            mkfifo(pid_pipe, 0644);
+            int fifo_s2c = open(pid_pipe, O_WRONLY);
+            
+            close(fifo_s2c);
+            unlink(pid_pipe);
+            */
         }
     }
     
 
     free_transforms(trnsf);
+    close(fifo_c2s);
     unlink("tmp/fifo_c2s");
 
     return 0;
