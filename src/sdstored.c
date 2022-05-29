@@ -16,7 +16,7 @@ typedef struct request {
     char* tipo;
     char* input_file;
     char* output_file;
-    int no_trnsf;
+    // int no_trnsf;
     char* trnsfs[32];
 } *Request;
 
@@ -110,12 +110,12 @@ void free_transforms(Transform *t) {
 Request proc_request(char* line) {
         Request r = malloc(sizeof(struct request));
 
-        char *aux[32], *aux1, *aux2, *aux3, *aux4, *aux5, *token;
+        char *aux, *aux1, *aux2, *aux3, *aux4, *token;
         
         token = strtok(line, " ");
         aux4 = strdup(token);
         r->client_pid = atoi(aux4);
-        r->no_trnsf = 0;
+        // r->no_trnsf = 0;
 
         
         
@@ -142,22 +142,25 @@ Request proc_request(char* line) {
 
             token = strtok(NULL, " ");
 
+            
             int i=0;
             while(token != NULL) {
-                aux5 = strdup(token);
+                aux = strdup(token);
                 // printf("%s %d ", aux, i);
+                r->trnsfs[i] = aux;
+                // printf("%s", r->trnsfs[i]);
 
                 token = strtok(NULL, " ");
-                aux[i] = aux5;
             
                 i++;
-                // r->no_trnsf = i+1;
-                // printf("%s %d ", r->trnsfs[i], r->no_trnsf);
+                // r->no_trnsf++;
             }
-            // printf("test");
+            // r->trnsfs[i+1] = NULL;
+            // write(1, "a ", strlen("a "));
 
             return r;
         }
+        return r;
 }
 
 
@@ -180,14 +183,10 @@ void print_req(Request r) {
         strcat(w, " ");
 
         
-        for(int i=0; i<r->no_trnsf; i++) {
+        for(int i=0; r->trnsfs[i]; i++) {
             strcat(w, r->trnsfs[i]);
             strcat(w, " ");
         }
-        /*
-        strcat(w, atoi(r->no_trnsf));
-        strcat(w, " ");
-        */
 
         strcat(w, "\n");
         write(1, w, strlen(w));
@@ -195,10 +194,13 @@ void print_req(Request r) {
     }
 }
 
-void print_req2 (Request r) {
-    printf("%d %s %s", r->client_pid, r->input_file, r->output_file);
+void print_req2(Request r) {
+    char w[128] = "";
+    for(int i=0; r->trnsfs[i]; i++) {
+            strcat(w, r->trnsfs[i]);
+            strcat(w, " ");
+        }
 }
-
 
 
 void init_queue (Request* request){
@@ -220,6 +222,40 @@ void adicionarPedidoQueue(Queue** pedidos, Request* request){
 
 
 
+void exec_req_simple (char* trnsf_dir, char* tipo, char* in_pathfile, char* out_pathfile) {
+
+    int in_fd = open(in_pathfile, O_RDONLY);
+    int out_fd = open(out_pathfile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+
+    if(in_fd < 0 || out_fd < 0) {
+        perror("abertura de um ou dos ficheiros a processar");
+    }
+
+    char* cmd = strdup(trnsf_dir);
+    strcat(cmd, tipo);
+    // write(1, search, strlen(search));
+
+    int fd[2];
+    int p = pipe(fd);
+     if(p == -1){
+        perror("pipe");
+    }
+
+    if(!fork()) {
+
+        dup2(in_fd, 0);
+        dup2(out_fd, 1);
+
+        execlp(cmd, cmd, NULL);
+
+        perror("execlp");
+        _exit(1);
+    }
+    else {
+        wait(NULL);
+    }
+}
+
 
 void exec_req (char* trnsf_dir, Request r) {
 
@@ -228,11 +264,6 @@ void exec_req (char* trnsf_dir, Request r) {
 
     if(in_fd < 0 || out_fd < 0) {
         perror("abertura de um ou dos ficheiros a processar");
-    }
-
-    if (in_fd < 0 || out_fd < 0) {
-        perror("erro na pathfile do ficheiro a processar ou processado");
-        return ;
     }
 
     char* cmd = strdup(trnsf_dir);
@@ -301,9 +332,12 @@ int main(int argc, char* argv[]) {
 
             req = proc_request(to_proc);
 
-            print_req2(req);
+            print_req(req);
 
             // exec_req(transform_path, req);
+
+            // exec_req2(transform_path, "bcompress", "samples/sample-1-so.m4a", "outputs/sample-1-so-bcomp.m4a");
+            // exec_req2(transform_path, "bdecompress", "outputs/sample-1-so-bcomp.m4a", "outputs/sample-1-so-bdecomp.m4a");
 
             char pipe[16];
             sprintf(pipe, "tmp/pipe_%d", req->client_pid);
