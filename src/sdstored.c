@@ -6,24 +6,11 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "../include/sdstored.h"
+
 
 #define NO_TRNSF 7
 #define BUFSIZE 1024
-
-
-typedef struct transform {
-    char *tipo;
-    int capacidade;
-    int disp;
-} *Transform;
-
-typedef struct request {
-    int client_pid;
-    int msg_type;
-    int no_trnsf;
-} *Request;
-
-
 
 int readln(int fd, char *line, size_t size) {
 	int bytes_read;
@@ -94,6 +81,19 @@ void free_transforms(Transform *t) {
 }
 
 
+void init_queue (Request* request){
+    Queue* queue = malloc(sizeof(struct queue));
+    queue->request = request;
+    queue->prox = NULL;
+}
+
+void adicionarPedidoQueue(Queue** pedidos, Request* request){
+    if (pedidos == NULL) return;
+
+    (*pedidos)->prox = malloc(sizeof (struct queue));
+    *pedidos = (*pedidos)->prox;
+    (*pedidos)->request = request;
+}
 
 
 void exec_req (char* trnsf_dir, char* tipo, char* in_pathfile, char* out_pathfile) {
