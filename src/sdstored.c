@@ -55,7 +55,7 @@ int readln(int fd, char *line, size_t size) {
 
 
 
-
+/*
 int read_file(char* filename) {
   int  fd = open(filename, O_RDONLY);
   char line[BUFSIZE];
@@ -66,8 +66,7 @@ int read_file(char* filename) {
   }
   return total_read;
 }
-
-
+*/
 
 
 
@@ -394,12 +393,16 @@ int main(int argc, char* argv[]) {
 
             // exec_req(transform_path, req);
 
-            // exec_req2(transform_path, "bcompress", "samples/sample-1-so.m4a", "outputs/sample-1-so-bcomp.m4a");
-            // exec_req2(transform_path, "bdecompress", "outputs/sample-1-so-bcomp.m4a", "outputs/sample-1-so-bdecomp.m4a");
+            exec_req_noreq_simple(transform_path, "bcompress", "samples/sample-1-so.m4a", "outputs/sample-1-so-bcomp.m4a");
+            // exec_req_noreq_simple(transform_path, "bdecompress", "outputs/sample-1-so-bcomp.m4a", "outputs/sample-1-so-bdecomp.m4a");
 
 
-            char pid_pipe[16];
-            sprintf(pipe, "tmp/pipe_%d", req->client_pid);
+            char* tr[2] = {"gcompress", "gdecompress"};
+            exec_req_noreq(transform_path, tr, 2, "samples/sample-1-so.m4a", "outputs/sample-test-gdecompress.m4a");
+
+
+            // char pid_pipe[16];
+            // sprintf(pid_pipe, "tmp/pipe_%d", req->client_pid);
 
             /*
             mkfifo(pid_pipe, 0644);
